@@ -83,13 +83,21 @@ def _validate_inputs(
     work_end: TimeSlot,
     meeting_duration: int,
     buffer_time: int,
+    n: int,
+    busy_intervals: List[Interval],
+    candidate_windows: Optional[List[Interval]],
 ) -> None:
     """
-    Validate scheduler inputs and raise ValueError for any violation.
+    Validate all scheduler inputs and raise ValueError for any violation.
 
     Raises:
-        ValueError: if work_start >= work_end, meeting_duration <= 0,
-                    or buffer_time < 0.
+        ValueError: if any of the following hold:
+            - work_start >= work_end
+            - meeting_duration <= 0
+            - buffer_time < 0
+            - n <= 0
+            - any busy interval has start >= end
+            - any candidate window has start >= end
     """
     if work_start.to_minutes() >= work_end.to_minutes():
         raise ValueError(
@@ -103,6 +111,23 @@ def _validate_inputs(
         raise ValueError(
             "Buffer time must be non-negative."
         )
+    if n <= 0:
+        raise ValueError(
+            "Number of requested slots (N) must be greater than 0."
+        )
+    for iv in busy_intervals:
+        s, e = iv.to_minutes()
+        if s >= e:
+            raise ValueError(
+                f"Busy interval start must be before end: {iv}"
+            )
+    if candidate_windows:
+        for cw in candidate_windows:
+            s, e = cw.to_minutes()
+            if s >= e:
+                raise ValueError(
+                    f"Candidate window start must be before end: {cw}"
+                )
 
 
 # ── Helper Functions ──────────────────────────────────────────────────────────
@@ -130,6 +155,35 @@ def _merge_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     return merged
 
 
+def _clip_busy_to_working_hours(
+    busy_mins: List[Tuple[int, int]],
+    work_start_min: int,
+    work_end_min: int,
+) -> List[Tuple[int, int]]:
+    """
+    Clip busy intervals to working hours, discarding any portions that
+    fall fully or partially outside the working window.
+
+    Intervals that partially overlap are trimmed to the overlapping
+    portion.  Intervals entirely outside are dropped.
+
+    Args:
+        busy_mins:      list of (start, end) busy intervals in minutes.
+        work_start_min: working-day start in minutes since midnight.
+        work_end_min:   working-day end in minutes since midnight.
+
+    Returns:
+        Clipped and merged busy intervals within working hours.
+    """
+    clipped: List[Tuple[int, int]] = []
+    for s, e in busy_mins:
+        cs = max(s, work_start_min)
+        ce = min(e, work_end_min)
+        if cs < ce:
+            clipped.append((cs, ce))
+    return _merge_intervals(clipped)
+
+
 def _compute_free_gaps(
     work_start_min: int,
     work_end_min: int,
@@ -139,24 +193,19 @@ def _compute_free_gaps(
     Compute free (available) gaps within [work_start_min, work_end_min)
     after removing all busy intervals.
 
+    The busy intervals are first clipped to working hours and merged.
+
     Args:
         work_start_min: working-day start in minutes since midnight.
-        work_end_min:   working-day end   in minutes since midnight.
-        busy_mins:      merged, sorted busy intervals in minutes.
+        work_end_min:   working-day end in minutes since midnight.
+        busy_mins:      busy intervals in minutes (need not be sorted).
 
     Returns:
-        List of (gap_start, gap_end) tuples representing available time.
+        List of (gap_start, gap_end) tuples representing available time,
+        sorted chronologically.
     """
-    # Clip busy intervals to working hours
-    clipped: List[Tuple[int, int]] = []
-    for s, e in busy_mins:
-        cs = max(s, work_start_min)
-        ce = min(e, work_end_min)
-        if cs < ce:
-            clipped.append((cs, ce))
-    clipped = _merge_intervals(clipped)
+    clipped = _clip_busy_to_working_hours(busy_mins, work_start_min, work_end_min)
 
-    # Walk through busy blocks and collect the gaps between them
     gaps: List[Tuple[int, int]] = []
     cursor = work_start_min
     for s, e in clipped:
@@ -206,6 +255,14 @@ def _fill_slots(
     Greedily place as many non-overlapping slots of size *slot_block*
     minutes as possible (up to *n*) inside the given gaps.
 
+    Slots are placed chronologically from the earliest gap forward
+    (tie-breaking rule #1 and #2).  No attempt is made to spread
+    meetings across the day (tie-breaking rule #3).
+
+    If no gap is large enough to hold a full slot, the system returns
+    only gaps that can accommodate the meeting (per the invariant that
+    returned slots must be at least as long as the required duration).
+
     Args:
         gaps:       sorted, non-overlapping free-gap intervals (minutes).
         slot_block: total minutes each slot occupies (duration + buffer).
@@ -246,22 +303,27 @@ def recommend_slots(
     constraints.
 
     Algorithm overview:
-        1. Validate inputs.
+        1. Validate all inputs (working hours, duration, buffer, N,
+           busy-interval ordering, candidate-window ordering).
         2. Sort and merge busy intervals; expand each by buffer_time so
            that a slot placed right after a busy block automatically
            respects the required buffer gap.
-        3. Compute free gaps within working hours.
+        3. Compute free gaps within working hours.  Busy intervals that
+           fall fully or partially outside working hours are clipped /
+           ignored.
         4. If candidate windows are provided, intersect the free gaps
            with the candidate windows.
         5. Greedily fill the remaining gaps with slots of size
-           (meeting_duration + buffer_time).
+           (meeting_duration + buffer_time), filling chronologically
+           from the earliest gap.
 
     Args:
         work_start:       beginning of the working day (inclusive).
         work_end:         end of the working day (exclusive).
-        busy_intervals:   existing busy blocks (need not be sorted).
+        busy_intervals:   existing busy blocks (need not be sorted;
+                          intervals outside working hours are ignored).
         meeting_duration: length of each meeting in minutes (> 0).
-        n:                maximum number of slots to return.
+        n:                maximum number of slots to return (> 0).
         buffer_time:      minutes of buffer after every meeting **and**
                           after every busy interval (default 0, >= 0).
         candidate_windows: if provided, every slot must fall entirely
@@ -276,7 +338,10 @@ def recommend_slots(
         ValueError: on invalid inputs (see _validate_inputs).
     """
     # 1. Validate
-    _validate_inputs(work_start, work_end, meeting_duration, buffer_time)
+    _validate_inputs(
+        work_start, work_end, meeting_duration, buffer_time, n,
+        busy_intervals, candidate_windows,
+    )
 
     work_s = work_start.to_minutes()
     work_e = work_end.to_minutes()
