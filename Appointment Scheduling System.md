@@ -1,0 +1,251 @@
+# Appointment Scheduling System
+
+## Objective of the System
+
+The objective of the system is to recommend appointment time slots in the user given window of working hours where a potential meeting can be scheduled, ensuring they do not clash with the user-given busy hours/intervals.
+
+## Functional Requirements
+
+- The system shall accept a start time of the working hour, in 24 hour format
+- The system shall accept an end time of the working hour, in 24 hour format
+- The system shall accept a list of busy intervals, in 24 hour format
+- The system shall accept a meeting duration time
+- The system shall accept an optional parameter known as buffer time
+- The system shall accept an optional parameter known as the candidate time
+- The system shall accept total number of meeting slots (N) to be generated
+- The system should return a chronologically sorted list of available slots in 24 hour format
+
+## Constraints & Assumptions
+
+- The system must ensure that suggested slots fall in working hours
+- The system must ensure that suggested slots do not overlap busy intervals
+- The system must ensure that buffer time is respected when evaluating availability.
+- The system must ensure if candidate time provided, then all recommended slots must fall within the candidate time range.
+- The system must ensure that output ordering is deterministic under identical inputs.
+- The system must sort the busy intervals list if not already sorted.
+- It is assumed that the times are for a single day and not more than that
+- It is assumed that the times provided are in 24 hour format containing only hours and minutes
+- It is assumed that the buffer time is consistent across all the meetings / same buffer time applies after every meeting
+- It is assumed that the meeting duration is same for all meetings
+- The system would raise a value error if any of start time less than end time
+- The system would raise a value error if meeting duration is less than or equal to 0
+- The system would raise a value error if buffer time is less than zero
+
+## Invariants
+
+- Returned slots must be at least as long as the required duration
+- No returned slot may violate buffer constraints
+- The returned list must reflect the current system state
+- Every suggested appointment slot must be within the working hour window
+- Every suggested appointment slot must have no overlap with other slots in the list
+
+## Negative Requirements (situations that must not occur)
+
+- The system must not return any slot that is outside the working hour window
+- The system must not return any slot whose duration is less than the user given meeting duration
+
+## Tie-Breaking Rules
+
+> Explain how the system should choose between multiple feasible scenarios. If two scenarios satisfy the same constraints, which should be prioritized?
+
+### 1. The slot scheduling is always done in chronology
+
+Say that if multiple free slots exist in the working hour window, the bookable slot recommendation will pick the first free available slot and then the next one and so on. In other words, if the meeting duration is 1 hr and there is a free slot from 11:00 to 12:00 am and also from 14:30 - 15:30 the system will prefer the 11:00 - 12:00 slot since it is first/ahead chronologically.
+
+### 2. The system will fill the gaps in time sequentially
+
+Say that the meeting duration is 30 minutes with buffer time 15 minutes and there is a free time from 13:00 - 16:00, it will start to fill from 13:00 - 13:30 then from 13:45 - 14:15 and so on. And not from middle of that free chunk (say from 14:00 onwards).
+
+### 3. The system will not attempt to manage the workload in case of back to back meetings
+
+Say the working hour is 9 to 17 (in 24 Hr format) and N is 1 and there is a gap from 11:30 - 12:00 and at the same time 14:00 - 17:00 is fully free. The system will not try to book a time in 14:00 - 17:00 window as 30 min gap exists between 11:30 - 12:00. The point is that the system will book the first available free slot until N slots are made and not try to better manage the user's time to make their workload even throughout the entire working window.
+
+## Exceptions and Day-Specific Rules
+
+- The system will raise a value error if any of start time less than end time in working window
+- The system will raise a value error if meeting duration is less than or equal to 0
+- The system will raise a value error if buffer time is less than zero
+- The system will raise a value error if N is zero
+- The system will raise a value error if the start time less than end time in busy hour
+- The system will raise a value error if the start time less than end time in candidate window
+- The system will ignore values in slots in busy intervals if they fall fully or partially outside the working window
+
+## Acceptance Criteria
+
+### AC1
+
+**Given** working hours 09:00 – 10:00, busy intervals [(09:00,10:00)], meeting duration 30 minutes, buffer 0, N = 5
+
+**When** system generates the slots
+
+**Then** it should return `[]`
+
+**Linked Constraint ID(s):** C1, C2
+
+---
+
+### AC2
+
+**Given** working hours 09:00 – 17:00, and no busy intervals and meeting duration is 60 minutes, buffer = 0 and N = 3
+
+**When** system generates the slots
+
+**Then** it shall return `[(09:00,10:00),(10:00,11:00),(11:00,12:00)]`
+
+**Linked Constraint ID(s):** C1, C5
+
+---
+
+### AC3
+
+**Given** working hours 09:00 – 17:00, and busy intervals = [(10:00,11:00)] and meeting duration is 30 minutes, buffer = 0 and N = 3
+
+**When** system generates the slots
+
+**Then** it shall return `(09:00,09:30),(09:30,10:00),(11:00,11:30)`
+
+**Linked Constraint ID(s):** C1, C2
+
+---
+
+### AC4
+
+**Given** working hours 09:00 – 17:00, and no busy intervals and meeting duration is 30 minutes, buffer = 0, candidate window = [(12:00, 14:00)] and N = 3
+
+**When** system generates the slots
+
+**Then** it shall return `[(12:00,12:30),(12:30,13:00),(13:00,13:30)]`
+
+**Linked Constraint ID(s):** C1, C4
+
+---
+
+### AC5
+
+**Given** working hours 09:00 – 17:00, and no busy intervals, buffer = 0 and N = 3 and meeting duration = 60
+
+**When** the same input is given twice
+
+**Then** it shall return identical slots for appointments
+
+**Linked Constraint ID(s):** C5
+
+---
+
+### AC6
+
+**Given** working hours 09:00 – 12:00, busy intervals [(10:00,10:30),(9:30,10:00)], meeting duration 30 minutes, buffer 0, N = 1
+
+**When** system generates the slots
+
+**Then** it shall return `(09:00, 09:30)`
+
+**Linked Constraint ID(s):** C2, C6
+
+---
+
+### AC7
+
+**Given** working hours 09:00 – 12:00, busy intervals [(10:00,11:00)], meeting duration 30 minutes, buffer = 10, N = 1
+
+**When** system generates the slots
+
+**Then** it shall return `[(9:00,9:40)]` taking into account the buffer time
+
+**Linked Constraint ID(s):** C2, C3
+
+---
+
+### AC8
+
+**Given** working hours 09:00 – 12:00, busy intervals [(9:20,9:50), (10:10,10:50), (11:10,11:40)], meeting duration 30 minutes, buffer = 0, N = 3
+
+**When** system generates the slots
+
+**Then** it shall return `[(9:50,10:10)]`
+
+**Linked Constraint ID(s):** C1, C2
+
+---
+
+### AC9
+
+**Given** working hours 09:00 – 12:00, busy intervals [(9:00,10:30), (10:00,11:00)], meeting duration 30 minutes, buffer = 0, N = 1
+
+**When** system generates the slots
+
+**Then** it shall return `[(11:00,11:30)]`
+
+**Linked Constraint ID(s):** C2, C6
+
+---
+
+## Edge Cases
+
+### EC1
+
+**Description:** If entire working window is in a busy interval then it leaves no time for booking additional meetings
+
+**Linked Constraint ID(s):** C1, C2
+
+**Covered by Acceptance Criteria ID(s):** AC1
+
+---
+
+### EC2
+
+**Description:** If there are 2 adjacent busy intervals then the system should recognize that there is no free time between them
+
+**Linked Constraint ID(s):** C2, C6
+
+**Covered by Acceptance Criteria ID(s):** AC6
+
+---
+
+### EC3
+
+**Description:** If busy intervals are unsorted, the system should sort them and then suggest the slots
+
+**Linked Constraint ID(s):** C6
+
+**Covered by Acceptance Criteria ID(s):** AC6
+
+---
+
+### EC4
+
+**Description:** A meeting duration longer than any available gap
+
+**Linked Constraint ID(s):** C1, C2
+
+**Covered by Acceptance Criteria ID(s):** AC8
+
+---
+
+### EC5
+
+**Description:** Buffers eliminating otherwise valid availability
+
+**Linked Constraint ID(s):** C2, C3
+
+**Covered by Acceptance Criteria ID(s):** AC7
+
+---
+
+### EC6
+
+**Description:** Very small gaps between meetings
+
+**Linked Constraint ID(s):** C1, C2
+
+**Covered by Acceptance Criteria ID(s):** AC8
+
+---
+
+### EC7
+
+**Description:** Overlapping busy intervals
+
+**Linked Constraint ID(s):** C2, C6
+
+**Covered by Acceptance Criteria ID(s):** AC9
