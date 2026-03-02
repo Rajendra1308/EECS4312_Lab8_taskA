@@ -1,5 +1,5 @@
-## Student Name:
-## Student ID:
+## Student Name: Rajendra Brahmbhatt 
+## Student ID: 217925157
 
 """
 Task A: Medication Reminder Scheduler (Stub)
