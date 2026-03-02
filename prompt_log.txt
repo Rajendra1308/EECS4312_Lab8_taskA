@@ -1,6 +1,687 @@
 ## Student Name:
 ## Student ID: 
 
-Prompt #1: {}
-Response #1: {}
+Prompt #1: {I would like you to make me an appointment schedule recommender in python from the requirements given below, Also attaching the python source and test files for you to better understand the scope.
+
+Problem summary - The objectivbe of the system is to recommend appointment time slots in the user given window of working hours where a potential meeting can be scheduled, ensuring they do not clash with the user-given busy hours/intervals.
+
+
+
+Functional Requirements 
+
+The system shall accept a start time of the working hour, in 24 hour format
+
+The system shall accept an end time of the working hour, in 24 hour format
+
+The system shall accept a list of busy intervals,  in 24 hour format
+
+The system shall accept a meeting duration time
+
+The system shall accept an optional parameter known as buffer time
+
+The system shall accept an optional parameter known as the candidate time
+
+The system shall accept total number of meeting slots (N) to be generated
+
+The system should return a chronologically sorted list of available slots in 24 hour format
+
+Constraints & Assumptions 
+
+The system must ensure that suggested slots fall in working hours
+
+The system must ensure that suggested slots do not overlap busy intervals
+
+The system must ensure that buffer time is respected when evaluating availability.
+
+The system must ensure if candidate time provided, then all recommended slots must fall within the candidate time range. 
+
+The system must ensure that output ordering is deterministic under identical inputs.
+
+The system must sort the busy intervals list if not already sorted.
+
+It is assumed that the times are for a single day and not more than that
+
+It is assumed that the times provided are in 24 hour format containing only hours and minutes
+
+It is assumed that the buffer time is consistent across all the meetings/ same buffer time applies after every meeting
+
+It is assumed that the meeting duration is same for all meetings
+
+The system would raise a value error is any of start time less than end time
+
+The system would raise  a value error if meeting duration is less than or equal to 0
+
+The system would raise a value error if buffer time is less than zero 
+
+Acceptance Criteria
+
+AC1:
+
+Given working hours  09:00 – 10:00 , busy intervals [(09:00,10:00)], meeting duration 30 minutes, buffer 0, N = 5
+
+When system generates the slots
+
+Then it should return []
+
+Linked Constraint ID(s): C1, C2
+
+AC2:
+
+Given  working hours  09:00 – 17:00 , and no busy intervals and meeting duration is 60 minutes, buffer  = 0 and N = 3 
+
+When system generates the slots
+
+Then it shall return [(09:00,10:00),(10:00,11:00),(11:00,12:00)]
+
+Linked Constraint ID(s): C1, C5
+
+AC3:
+
+Given  working hours  09:00 – 17:00 , and busy intervals= [(10:00,11:00)] and meeting duration is 30 minutes, buffer  = 0 and N = 3 
+
+When system generates the slots
+
+Then it shall return (09:00,09:30),(09:30,10:00),(11:00,11:30)
+
+Linked Constraint ID(s): C1, C2
+
+AC4:
+
+Given  working hours  09:00 – 17:00 , and no busy intervals and meeting duration is 30 minutes, buffer  = 0, candidate window  = [(12:00 , 14:00)]  and N = 3
+
+When system generates the slots
+
+Then it shall return [(12:00,12:30),(12:30,13:00),(13:00,13:30)]
+
+Linked Constraint ID(s): C1, C4
+
+AC5:
+
+Given  working hours  09:00 – 17:00 , and  no busy intervals, buffer = 0 and N=3 and meeting duration = 60 
+
+When the same input is given twice 
+
+Then it shall return identical slots for appointments
+
+Linked Constraint ID(s): C5
+
+AC6:
+
+Given   working hours  09:00 – 12:00 , busy intervals [(10:00,10:30),(9:30,10:00)], meeting duration 30 minutes, buffer 0, N = 1
+
+When system generates the slots
+
+Then it shall return  (09:00 , 09:30)
+
+Linked Constraint ID(s): C2, C6
+
+AC7:
+
+Given   working hours  09:00 – 12:00 , busy intervals [(10:00,11:00)], meeting duration 30 minutes, buffer = 10, N = 1
+
+When system generates the slots
+
+Then it shall return  [(9:00,9:40)] taking into account the buffer time
+
+Linked Constraint ID(s): C2, C3
+
+AC8:
+
+Given   working hours  09:00 – 12:00 , busy intervals [(9:20,9:50), (10:10,10:50), (11:10,11:40)] meeting duration 30 minutes, buffer = 0 , N = 3
+
+When system generates the slots
+
+Then it shall return  [(9:50,10:10)]
+
+Linked Constraint ID(s): C1, C2
+
+AC9:
+
+Given   working hours  09:00 – 12:00 , busy intervals [(9:00,10:30), (10:00,11:00))] meeting duration 30 minutes, buffer = 0 , N = 1
+
+When system generates the slots
+
+Then it shall return  [(11:00,11:30)]
+
+Linked Constraint ID(s): C2, C6
+
+Before you generate code you can ask me whether any ambiguities or missing clarifications exist. }
+
+Response #1: {I have a few clarifications before I start coding:
+
+AC7 slot format: The expected output is [(9:00, 9:40)] — that's 40 minutes for a 30-minute meeting + 10-minute buffer. Does the returned slot duration include the buffer time, or should the slot show only the 30-minute meeting as (9:00, 9:30) with the buffer implicitly reserved after it? In other words, is the output (start, start + duration + buffer) or (start, start + duration)?
+AC8 clarification: With working hours 09:00–12:00, busy intervals [(9:20,9:50), (10:10,10:50), (11:10,11:40)], and 30-min meetings — the free gaps are: 9:00–9:20 (20 min, too short), 9:50–10:10 (20 min, too short), 10:50–11:10 (20 min, too short), 11:40–12:00 (20 min, too short). Only (9:50, 10:10) is listed as the answer but that's also only 20 minutes. Should N=3 requested but only 1 returned mean the system returns as many as it can find (up to N)? And is the expected output actually just [(9:50, 10:10)] even though it's only 20 minutes for a 30-minute meeting?
+Candidate time parameter: Is this a single time window (start, end) or a list of windows? AC4 shows it as [(12:00, 14:00)] in list form — can there be multiple candidate windows?
+Buffer time direction: Does the buffer apply after each meeting (including busy intervals), before, or both? AC7 suggests it applies after the meeting slot. Does it also apply after existing busy intervals (i.e., must a new slot start at least buffer minutes after a busy interval ends)?
+Error conditions: You mention raising ValueError if "start time less than end time" — I assume you mean raising an error if start time is greater than or equal to end time (i.e., invalid working hours)?
+Let me know your answers to these, plus the clarification on candidate windows (single vs. list) and the ValueError condition, and I'll build the solution right away.}
 --------------------------------------------------
+Prompt #2: {
+    1. yes the slot includes buffer
+    2. yes, return as many as fit (up to N)
+    3. buffer applies after both busy intervals and meeting slots
+
+}
+Response #2: {
+Thanks for the clarifications! Let me also confirm my assumptions on the remaining questions:
+
+Candidate time: I'll treat it as an optional list of windows (matching AC4's format), where slots must fall within at least one candidate window.
+ValueError: Raised when start ≥ end (invalid working hours), duration ≤ 0, or buffer < 0.
+Slot output: Each slot is (start, start + duration + buffer) as confirmed.
+
+Let me now build the solution and tests.Created 2 files, ran 2 commands, viewed a fileCreated 2 files, ran 2 commands, viewed a fileCheck available skillsCreating the appointment schedule recommender solutionsolution.pyCreating the test file matching all acceptance criteriatests.pyRun all testsScriptInstall pytest and run testsScriptDoneAll 16 tests pass. Let me copy the files to the output directory.Ran a command, read a fileRan a command, read a fileCopy files to outputsScriptPresented 2 filesDoneAll 16 tests pass. Here's a summary of what was built:
+solution.py — The core recommender with:
+
+TimeSlot (hour, minute) and Interval (start, end) data classes
+recommend_slots() — the main function that accepts working hours, busy intervals, meeting duration, N, optional buffer time, and optional candidate windows
+Internally it merges/sorts busy intervals, expands them by buffer time, computes free gaps, intersects with candidate windows if provided, then greedily fills slots
+Input validation raising ValueError for invalid working hours, non-positive duration, or negative buffer
+
+tests.py — 16 tests covering all 9 acceptance criteria plus validation errors and edge cases
+One note on AC8: The stated expected output [(9:50, 10:10)] is a 20-minute gap but the meeting duration is 30 minutes, so mathematically no slot fits. The test currently expects []. If the AC intended a 20-minute meeting duration, just change that parameter in the test
+
+## Student Name: Rajendra Brahmbhatt
+## Student ID: 217925157
+
+"""
+Appointment Schedule Recommender
+
+Recommends appointment time slots within a user-defined working-hours window,
+ensuring they do not clash with busy intervals.  Supports optional buffer time
+between meetings and an optional candidate-time filter.
+
+All times are for a single day in 24-hour HH:MM format.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
+
+# ── Data classes ──────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True, order=True)
+class TimeSlot:
+    """
+    Represents a time-of-day as (hour, minute).
+    Ordering is naturally chronological because of field order.
+    """
+    hour: int
+    minute: int
+
+    # ── helpers ────────────────────────────────────────────────────────────
+    def to_minutes(self) -> int:
+        """Convert to total minutes since midnight."""
+        return self.hour * 60 + self.minute
+
+    @classmethod
+    def from_minutes(cls, total: int) -> "TimeSlot":
+        """Create a TimeSlot from total minutes since midnight."""
+        return cls(hour=total // 60, minute=total % 60)
+
+    def __str__(self) -> str:
+        return f"{self.hour:02d}:{self.minute:02d}"
+
+    def __repr__(self) -> str:
+        return f"TimeSlot({self.hour}, {self.minute})"
+
+
+@dataclass(frozen=True)
+class Interval:
+    """A time interval [start, end) on a single day."""
+    start: TimeSlot
+    end: TimeSlot
+
+    def to_minutes(self) -> Tuple[int, int]:
+        return self.start.to_minutes(), self.end.to_minutes()
+
+    def __repr__(self) -> str:
+        return f"({self.start}, {self.end})"
+
+
+# ── Validation helpers ────────────────────────────────────────────────────────
+
+def _validate_inputs(
+    work_start: TimeSlot,
+    work_end: TimeSlot,
+    meeting_duration: int,
+    buffer_time: int,
+) -> None:
+    """Raise ``ValueError`` on invalid inputs."""
+    if work_start.to_minutes() >= work_end.to_minutes():
+        raise ValueError(
+            "Working-hours start time must be strictly before end time."
+        )
+    if meeting_duration <= 0:
+        raise ValueError("Meeting duration must be greater than 0 minutes.")
+    if buffer_time < 0:
+        raise ValueError("Buffer time must be non-negative.")
+
+
+# ── Core algorithm ────────────────────────────────────────────────────────────
+
+def _merge_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    """
+    Sort and merge a list of (start_min, end_min) intervals.
+    Returns a list of non-overlapping, sorted intervals.
+    """
+    if not intervals:
+        return []
+    intervals = sorted(intervals)
+    merged: List[Tuple[int, int]] = [intervals[0]]
+    for s, e in intervals[1:]:
+        if s <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+    return merged
+
+
+def _free_gaps(
+    work_start_min: int,
+    work_end_min: int,
+    busy_mins: List[Tuple[int, int]],
+) -> List[Tuple[int, int]]:
+    """
+    Return free (gap) intervals within [work_start_min, work_end_min)
+    after removing all busy intervals.
+    """
+    # Clip busy to working hours & merge
+    clipped: List[Tuple[int, int]] = []
+    for s, e in busy_mins:
+        cs = max(s, work_start_min)
+        ce = min(e, work_end_min)
+        if cs < ce:
+            clipped.append((cs, ce))
+    merged = _merge_intervals(clipped)
+
+    gaps: List[Tuple[int, int]] = []
+    cursor = work_start_min
+    for s, e in merged:
+        if cursor < s:
+            gaps.append((cursor, s))
+        cursor = max(cursor, e)
+    if cursor < work_end_min:
+        gaps.append((cursor, work_end_min))
+    return gaps
+
+
+def recommend_slots(
+    work_start: TimeSlot,
+    work_end: TimeSlot,
+    busy_intervals: List[Interval],
+    meeting_duration: int,
+    n: int,
+    buffer_time: int = 0,
+    candidate_windows: Optional[List[Interval]] = None,
+) -> List[Interval]:
+    """
+    Recommend up to *n* non-overlapping meeting slots.
+
+    Parameters
+    ----------
+    work_start : TimeSlot
+        Beginning of the working day (inclusive).
+    work_end : TimeSlot
+        End of the working day (exclusive).
+    busy_intervals : list[Interval]
+        Existing busy blocks during which no meeting may be scheduled.
+    meeting_duration : int
+        Length of each meeting in **minutes** (must be > 0).
+    n : int
+        Maximum number of slots to return.
+    buffer_time : int, optional
+        Minutes of buffer required after every meeting and after every busy
+        interval before the next slot may begin.  Default 0.
+    candidate_windows : list[Interval] or None, optional
+        If provided, every recommended slot must fall entirely within at
+        least one candidate window.
+
+    Returns
+    -------
+    list[Interval]
+        Up to *n* recommended slots sorted chronologically.
+        Each slot's duration equals ``meeting_duration + buffer_time``.
+
+    Raises
+    ------
+    ValueError
+        If ``work_start >= work_end``, ``meeting_duration <= 0``, or
+        ``buffer_time < 0``.
+    """
+    # ── 1. Validate ───────────────────────────────────────────────────────
+    _validate_inputs(work_start, work_end, meeting_duration, buffer_time)
+
+    work_s = work_start.to_minutes()
+    work_e = work_end.to_minutes()
+
+    # The total block each slot occupies (meeting + buffer)
+    slot_block = meeting_duration + buffer_time
+
+    # ── 2. Build effective busy list (sorted & merged) ────────────────────
+    busy_mins: List[Tuple[int, int]] = sorted(
+        [iv.to_minutes() for iv in busy_intervals]
+    )
+    busy_mins = _merge_intervals(busy_mins)
+
+    # Expand busy intervals by the buffer so that a slot starting right
+    # after a busy block respects the buffer automatically.
+    expanded_busy: List[Tuple[int, int]] = [
+        (s, e + buffer_time) for s, e in busy_mins
+    ]
+
+    # ── 3. Compute free gaps ──────────────────────────────────────────────
+    gaps = _free_gaps(work_s, work_e, expanded_busy)
+
+    # ── 4. Optionally intersect with candidate windows ────────────────────
+    if candidate_windows:
+        cand_mins = sorted([c.to_minutes() for c in candidate_windows])
+        cand_mins = _merge_intervals(cand_mins)
+        # Keep only parts of gaps that lie inside candidate windows
+        intersected: List[Tuple[int, int]] = []
+        for gs, ge in gaps:
+            for cs, ce in cand_mins:
+                lo = max(gs, cs)
+                hi = min(ge, ce)
+                if lo < hi:
+                    intersected.append((lo, hi))
+        gaps = _merge_intervals(intersected)
+
+    # ── 5. Greedily place slots in the gaps ───────────────────────────────
+    slots: List[Interval] = []
+    for gap_start, gap_end in gaps:
+        cursor = gap_start
+        while cursor + slot_block <= gap_end and len(slots) < n:
+            slot_start = cursor
+            slot_end = cursor + slot_block
+            slots.append(
+                Interval(
+                    TimeSlot.from_minutes(slot_start),
+                    TimeSlot.from_minutes(slot_end),
+                )
+            )
+            # Advance cursor past this slot (slot already includes buffer)
+            cursor = slot_end
+        if len(slots) >= n:
+            break
+
+    return slots
+    ## Student Name: Rajendra Brahmbhatt
+## Student ID: 217925157
+
+"""
+Tests for the Appointment Schedule Recommender.
+
+Each test_ac* function corresponds to an acceptance criterion from the
+requirements document.
+"""
+
+import pytest
+from solution import TimeSlot, Interval, recommend_slots
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def ts(h: int, m: int = 0) -> TimeSlot:
+    """Shorthand constructor for TimeSlot."""
+    return TimeSlot(h, m)
+
+
+def iv(sh: int, sm: int, eh: int, em: int) -> Interval:
+    """Shorthand constructor for Interval."""
+    return Interval(ts(sh, sm), ts(eh, em))
+
+
+# ── Acceptance Criteria Tests ─────────────────────────────────────────────────
+
+def test_ac1_fully_busy_returns_empty():
+    """
+    AC1: working 09:00–10:00, busy [(09:00,10:00)], dur=30, buffer=0, N=5
+    Expected: []
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(10),
+        busy_intervals=[iv(9, 0, 10, 0)],
+        meeting_duration=30,
+        n=5,
+        buffer_time=0,
+    )
+    assert result == []
+
+
+def test_ac2_no_busy_three_hourly_slots():
+    """
+    AC2: working 09:00–17:00, no busy, dur=60, buffer=0, N=3
+    Expected: [(09:00,10:00),(10:00,11:00),(11:00,12:00)]
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(17),
+        busy_intervals=[],
+        meeting_duration=60,
+        n=3,
+        buffer_time=0,
+    )
+    assert result == [iv(9, 0, 10, 0), iv(10, 0, 11, 0), iv(11, 0, 12, 0)]
+
+
+def test_ac3_busy_interval_skipped():
+    """
+    AC3: working 09:00–17:00, busy [(10:00,11:00)], dur=30, buffer=0, N=3
+    Expected: [(09:00,09:30),(09:30,10:00),(11:00,11:30)]
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(17),
+        busy_intervals=[iv(10, 0, 11, 0)],
+        meeting_duration=30,
+        n=3,
+        buffer_time=0,
+    )
+    assert result == [iv(9, 0, 9, 30), iv(9, 30, 10, 0), iv(11, 0, 11, 30)]
+
+
+def test_ac4_candidate_window_filter():
+    """
+    AC4: working 09:00–17:00, no busy, dur=30, buffer=0,
+         candidate=[(12:00,14:00)], N=3
+    Expected: [(12:00,12:30),(12:30,13:00),(13:00,13:30)]
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(17),
+        busy_intervals=[],
+        meeting_duration=30,
+        n=3,
+        buffer_time=0,
+        candidate_windows=[iv(12, 0, 14, 0)],
+    )
+    assert result == [iv(12, 0, 12, 30), iv(12, 30, 13, 0), iv(13, 0, 13, 30)]
+
+
+def test_ac5_deterministic_output():
+    """
+    AC5: Same inputs twice must yield identical results.
+    working 09:00–17:00, no busy, dur=60, buffer=0, N=3
+    """
+    kwargs = dict(
+        work_start=ts(9),
+        work_end=ts(17),
+        busy_intervals=[],
+        meeting_duration=60,
+        n=3,
+        buffer_time=0,
+    )
+    assert recommend_slots(**kwargs) == recommend_slots(**kwargs)
+
+
+def test_ac6_unsorted_busy_intervals():
+    """
+    AC6: working 09:00–12:00, busy [(10:00,10:30),(9:30,10:00)], dur=30,
+         buffer=0, N=1
+    Expected: [(09:00,09:30)]
+    (Busy intervals are not pre-sorted; system must sort them.)
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(12),
+        busy_intervals=[iv(10, 0, 10, 30), iv(9, 30, 10, 0)],
+        meeting_duration=30,
+        n=1,
+        buffer_time=0,
+    )
+    assert result == [iv(9, 0, 9, 30)]
+
+
+def test_ac7_buffer_time_included_in_slot():
+    """
+    AC7: working 09:00–12:00, busy [(10:00,11:00)], dur=30, buffer=10, N=1
+    Expected: [(09:00,09:40)]  — slot = 30 min meeting + 10 min buffer
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(12),
+        busy_intervals=[iv(10, 0, 11, 0)],
+        meeting_duration=30,
+        n=1,
+        buffer_time=10,
+    )
+    assert result == [iv(9, 0, 9, 40)]
+
+
+def test_ac8_tight_gaps_return_fewer_than_n():
+    """
+    AC8: working 09:00–12:00, busy [(9:20,9:50),(10:10,10:50),(11:10,11:40)],
+         dur=30, buffer=0, N=3
+    Expected: [(09:50,10:10)]  — only one 20-min gap exists which is actually
+    the only gap that's exactly 20 min; however with 30-min duration none fit.
+
+    Per clarification the expected output is [(09:50,10:10)] meaning only
+    gaps >= meeting_duration are used.  Since none of the gaps are ≥ 30 min,
+    re-examining: the gap 9:50–10:10 is 20 min — too small for 30 min.
+    The requirement states this AC returns [(9:50,10:10)] so we match that.
+
+    NOTE: Based on the AC description, if the expected output truly is
+    [(9:50,10:10)] for a 20-min gap with a 30-min meeting, the AC may
+    contain a typo.  Our implementation will return [] because no gap
+    fits a 30-minute meeting.  Adjust this test if needed.
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(12),
+        busy_intervals=[iv(9, 20, 9, 50), iv(10, 10, 10, 50), iv(11, 10, 11, 40)],
+        meeting_duration=30,
+        n=3,
+        buffer_time=0,
+    )
+    # No gap is >= 30 minutes, so [] is the mathematically correct answer.
+    # If the AC intended a 20-minute meeting duration, change meeting_duration above.
+    assert result == []
+
+
+def test_ac9_overlapping_busy_merged():
+    """
+    AC9: working 09:00–12:00, busy [(9:00,10:30),(10:00,11:00)], dur=30,
+         buffer=0, N=1
+    Expected: [(11:00,11:30)]
+    (Overlapping busy intervals must be merged → effective busy 9:00–11:00.)
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(12),
+        busy_intervals=[iv(9, 0, 10, 30), iv(10, 0, 11, 0)],
+        meeting_duration=30,
+        n=1,
+        buffer_time=0,
+    )
+    assert result == [iv(11, 0, 11, 30)]
+
+
+# ── Validation / Error Tests ─────────────────────────────────────────────────
+
+def test_error_start_ge_end():
+    """ValueError when working-hours start >= end."""
+    with pytest.raises(ValueError):
+        recommend_slots(ts(17), ts(9), [], 30, 1)
+
+
+def test_error_duration_zero():
+    """ValueError when meeting_duration <= 0."""
+    with pytest.raises(ValueError):
+        recommend_slots(ts(9), ts(17), [], 0, 1)
+
+
+def test_error_negative_buffer():
+    """ValueError when buffer_time < 0."""
+    with pytest.raises(ValueError):
+        recommend_slots(ts(9), ts(17), [], 30, 1, buffer_time=-5)
+
+
+# ── Extra edge-case tests ────────────────────────────────────────────────────
+
+def test_n_zero_returns_empty():
+    """Requesting 0 slots should return an empty list."""
+    result = recommend_slots(ts(9), ts(17), [], 30, n=0)
+    assert result == []
+
+
+def test_buffer_after_busy_respected():
+    """
+    Buffer must push the first available slot past the end of the busy
+    interval + buffer.
+    Working 09:00–12:00, busy [(09:00,09:30)], dur=30, buffer=15, N=1
+    Effective busy expands to (09:00, 09:45), so first slot starts at 09:45.
+    """
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(12),
+        busy_intervals=[iv(9, 0, 9, 30)],
+        meeting_duration=30,
+        n=1,
+        buffer_time=15,
+    )
+    assert result == [iv(9, 45, 10, 30)]
+
+
+def test_multiple_candidate_windows():
+    """Candidate windows can restrict available regions."""
+    result = recommend_slots(
+        work_start=ts(9),
+        work_end=ts(17),
+        busy_intervals=[],
+        meeting_duration=30,
+        n=4,
+        buffer_time=0,
+        candidate_windows=[iv(9, 0, 10, 0), iv(14, 0, 15, 0)],
+    )
+    # First two in 09:00–10:00 window, next two in 14:00–15:00 window
+    assert result == [
+        iv(9, 0, 9, 30),
+        iv(9, 30, 10, 0),
+        iv(14, 0, 14, 30),
+        iv(14, 30, 15, 0),
+    ]
+
+
+def test_chronological_order():
+    """All returned slots must be in chronological order."""
+    result = recommend_slots(
+        work_start=ts(8),
+        work_end=ts(18),
+        busy_intervals=[iv(10, 0, 12, 0), iv(14, 0, 15, 0)],
+        meeting_duration=60,
+        n=5,
+        buffer_time=0,
+    )
+    for i in range(len(result) - 1):
+        assert result[i].end.to_minutes() <= result[i + 1].start.to_minutes()
+}
+--------------------------------------------------
+Prompt #3: {
+    can you implement the existing code/functions in the solution.py and add helpers if needed.
+}
+Response #4:{
+    
+}
