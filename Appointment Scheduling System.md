@@ -30,6 +30,9 @@ The objective of the system is to recommend appointment time slots in the user g
 - The system would raise a value error if any of start time less than end time
 - The system would raise a value error if meeting duration is less than or equal to 0
 - The system would raise a value error if buffer time is less than zero
+- It is assumed that the recommended slot includes buffer time
+- If there is no available slot present as long as user given meeting duration then system shall return shorter duration slots as many as fit (up to N)
+- It is assumed that the buffer applies after both busy intervals and meeting slots
 
 ## Invariants
 
