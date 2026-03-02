@@ -1322,3 +1322,15 @@ def test_buffer_between_consecutive_slots():
     )
     assert result == [iv(9, 0, 9, 40), iv(9, 40, 10, 20), iv(10, 20, 11, 0)]
 }
+
+
+--------------------------------------------------
+"This prompt is not for implementation but I am still including to maintain transparency"
+Prompt #4: {
+    update the readme file to match the current file names and structure
+    
+}
+
+Response #4: {
+    Note: You can see the README file on my branch, which is under the commit "Updated README to ensure consistency with file names & removed wrong file name mentions"
+}
