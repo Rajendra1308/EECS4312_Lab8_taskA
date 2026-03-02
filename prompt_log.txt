@@ -1334,3 +1334,10 @@ Prompt #4: {
 Response #4: {
     Note to TA: You can see the README file on my branch, which is under the commit "Updated README to ensure consistency with file names & removed wrong file name mentions" that is the response --- this is written by Rajendra 
 }
+
+
+Summary of Response Accepted/Rejected
+Response #1 : was accepted with changes in assumptions as asked by LLM
+Response #2 : was Rejected since it provided the code inconsistent with the skeleton code provied in the stub file
+Response #3: was accepted since it fixed the code from  response 2
+Response #4: was accepted as it helped update README file structure consistency with file names 
