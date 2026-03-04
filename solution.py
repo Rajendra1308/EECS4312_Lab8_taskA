@@ -169,8 +169,9 @@ def suggest_slots(
         if b.start >= b.end:
             continue
 
-        b_start = datetime.combine(day, b.start)
-        b_end = datetime.combine(day, b.end)
+        # Expand busy by buffer on both sides
+        b_start = datetime.combine(day, b.start) - buffer
+        b_end = datetime.combine(day, b.end) + buffer
 
         if not merged:
             merged.append((b_start, b_end))
@@ -206,7 +207,7 @@ def suggest_slots(
     # -------------------- Generate Slots --------------------
 
     slots = []
-    block = duration + buffer
+    block = duration 
 
     for gap_start, gap_end in free_gaps:
         slot_cursor = gap_start
@@ -215,7 +216,7 @@ def suggest_slots(
             slots.append(Slot(start_time=slot_cursor.time()))
             if len(slots) == n:
                 return slots
-            slot_cursor += block
+            slot_cursor += duration
 
     # -------------------- Fallback: Shorter Gaps --------------------
 
