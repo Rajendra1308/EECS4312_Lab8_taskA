@@ -147,12 +147,174 @@ Linked Constraint ID(s): C2, C6
 
 Before you generate code you can ask me whether any ambiguities or missing clarifications exist. }
 
-Response #1: {}
+Response #1: {Before I implement suggest_slots, I need to clarify a few important ambiguities because they directly affect the algorithm and expected outputs (especially AC7 and AC8).
+
+Here are the key clarification points:
+
+1️⃣ What exactly does buffer time mean?
+
+There are two common interpretations:
+
+Option A – Post-meeting buffer only
+
+If a meeting is from 09:00–09:30
+
+And buffer = 10 minutes
+
+Then the next busy period effectively starts at 09:40
+
+So the meeting occupies: [start, end + buffer]
+
+Option B – Symmetric buffer (before AND after)
+
+Busy intervals are expanded both sides:
+
+busy_start - buffer
+busy_end + buffer
+
+⚠️ AC7 suggests post-meeting buffer only, because:
+
+Working: 09:00–12:00
+
+Busy: 10:00–11:00
+
+Duration: 30
+
+Buffer: 10
+
+Expected slot: (09:00, 09:40)
+
+This implies:
+
+Meeting 09:00–09:30
+Buffer 10
+Total blocked until 09:40
+
+So this looks like buffer extends the meeting end, not the busy interval start.
+
+Please confirm:
+👉 Is buffer applied only after a meeting ends?
+
+2️⃣ What is the slot granularity?
+
+Do we:
+
+Generate slots every 1 minute?
+
+Every 5 minutes?
+
+Only contiguous packing (back-to-back)?
+
+From AC2:
+Working: 09:00–17:00
+Duration: 60
+Expected:
+
+(09:00–10:00)
+(10:00–11:00)
+(11:00–12:00)
+
+This suggests:
+
+Deterministic left-to-right packing
+
+No sliding window minute-by-minute
+
+Just fill sequentially
+
+Please confirm:
+👉 Should slots be generated sequentially from earliest available time without minute-by-minute sliding?
+
+3️⃣ What should happen if working_hours.start >= working_hours.end?
+
+Your requirement says:
+
+The system would raise a value error if start time less than end time
+
+I assume you meant:
+
+Raise ValueError if start >= end
+
+Please confirm.
+
+4️⃣ What if n == 0?
+
+Should it:
+
+Return []?
+
+Or raise error?
+
+5️⃣ AC8 seems inconsistent
+
+AC8:
+Working: 09:00–12:00
+Busy:
+
+(9:20–9:50)
+(10:10–10:50)
+(11:10–11:40)
+
+Duration: 30
+Buffer: 0
+N = 3
+
+Expected:
+
+[(9:50,10:10)]
+
+But:
+
+9:50–10:10 = 20 minutes ❌ (less than 30)
+
+So either:
+
+Duration is ignored?
+
+Or this acceptance criteria is incorrect?
+
+Please confirm whether AC8 is a typo.
+
+6️⃣ Candidate window interaction
+
+If candidate window is provided:
+Should we:
+
+Intersect it with working hours?
+
+Or treat it as additional restriction?
+
+I assume:
+
+effective_window = intersection(working_hours, candidate_window)
+
+Please confirm.
+
+Once you clarify these, I will:
+
+Implement a fully deterministic algorithm
+
+Properly handle:
+
+Unsorted & overlapping busy intervals
+
+Buffer expansion
+
+Candidate restriction
+
+All edge cases
+
+Ensure all AC1–AC9 pass cleanly
+
+Waiting for your clarifications 👌}
 --------------------------------------------------
 Prompt #2: {
-    1. yes the slot includes buffer
-    2. yes, return as many as fit (up to N)
-    3. buffer applies after both busy intervals and meeting slots
+1. option 1 yes the meeting slot includes buffer
+2. generate slots within the working window, where every slot is meeting duration+buffer time long from left-to-right
+3. Yes, you understood it correctly
+4. If n == 0  return []
+5. If no available slot for meeting duration exisits return upto N slots with the maximum time shorter than the meeting duration 
+6. Candidte window will be intersected with working hours 
 
 }
 Response #2: {}
