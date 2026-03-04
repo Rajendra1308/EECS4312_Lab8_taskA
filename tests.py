@@ -305,14 +305,12 @@ def test_negative_buffer_raises():
         suggest_slots(day, working, [], timedelta(minutes=30), n=1, buffer=timedelta(minutes=-5))
 
 
-def test_n_zero_returns_empty():
+def test_n_zero_raises():
     day = date(2026, 2, 24)
     working = TimeWindow(time(9, 0), time(12, 0))
 
-    out = suggest_slots(day, working, [], timedelta(minutes=30), n=0)
-
-    assert out == []
-
+    with pytest.raises(ValueError):
+        suggest_slots(day, working, [], timedelta(minutes=30), n=0)
 
 def test_fallback_to_shorter_gap_when_no_full_duration():
     """
@@ -342,3 +340,113 @@ def test_candidate_window_no_overlap_with_working():
     out = suggest_slots(day, working, [], timedelta(minutes=30), n=5, candidate_window=candidate)
 
     assert out == []
+def test_invalid_candidate_window_raises():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(17, 0))
+    candidate = TimeWindow(time(14, 0), time(12, 0))  # invalid
+
+    with pytest.raises(ValueError):
+        suggest_slots(day, working, [], timedelta(minutes=30), n=1, candidate_window=candidate)
+def test_invalid_busy_interval_raises():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [BusyInterval(time(10, 0), time(9, 30))]  # invalid
+
+    with pytest.raises(ValueError):
+        suggest_slots(day, working, busy, timedelta(minutes=30), n=1)
+def test_busy_outside_working_ignored():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+
+    busy = [
+        BusyInterval(time(7, 0), time(8, 0)),   # fully before
+        BusyInterval(time(13, 0), time(14, 0)), # fully after
+    ]
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=2)
+
+    assert [s.start_time for s in out] == [time(9, 0), time(9, 30)]
+
+def test_candidate_partially_outside_working():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(17, 0))
+    candidate = TimeWindow(time(8, 0), time(10, 0))  # overlaps partially
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, [], duration, n=2, candidate_window=candidate)
+
+    # Effective window should be 9:00–10:00
+    assert [s.start_time for s in out] == [time(9, 0), time(9, 30)]
+def test_returned_slots_do_not_overlap_each_other():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(11, 0))
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, [], duration, n=10)
+
+    for i in range(len(out) - 1):
+        start1 = combine(day, out[i].start_time)
+        end1 = start1 + duration
+
+        start2 = combine(day, out[i+1].start_time)
+
+        assert end1 <= start2
+def test_n_larger_than_possible_slots():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, [], duration, n=10)
+
+    # Only 2 possible slots
+    assert len(out) == 2
+
+def test_buffer_eliminates_all_slots():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [BusyInterval(time(10, 0), time(10, 30))]
+    duration = timedelta(minutes=30)
+
+    # Large buffer wipes out availability
+    out = suggest_slots(day, working, busy, duration, n=5, buffer=timedelta(hours=2))
+
+    assert out == []
+def test_tie_breaking_chronology():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(17, 0))
+    busy = [BusyInterval(time(9, 0), time(11, 30))]
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=1)
+
+    # First available slot is 11:30
+    assert out[0].start_time == time(11, 30)
+def test_sequential_gap_filling():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(13, 0), time(16, 0))
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, [], duration, n=4)
+
+    assert [s.start_time for s in out] == [
+        time(13, 0),
+        time(13, 30),
+        time(14, 0),
+        time(14, 30),
+    ]
+def test_fallback_only_when_no_full_duration():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(9, 20))
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, [], duration, n=3)
+
+    # No full-duration slot possible
+    assert len(out) == 1
+    assert out[0].start_time == time(9, 0)
