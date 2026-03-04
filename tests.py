@@ -178,4 +178,167 @@ def test_a5_buffer_eliminates_small_gaps():
 
 #################################################################################
 # Add your own additional tests here to cover more cases and edge cases as needed.
-#################################################################################
+################################################################################## 
+# ---------------- Acceptance Criteria Explicit Tests ----------------
+
+def test_ac1_full_busy_no_slots():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+    busy = [BusyInterval(time(9, 0), time(10, 0))]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=5, buffer=timedelta(0), candidate_window=None)
+
+    assert out == []
+
+
+def test_ac2_simple_sequential_slots():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(17, 0))
+    busy = []
+    duration = timedelta(minutes=60)
+
+    out = suggest_slots(day, working, busy, duration, n=3, buffer=timedelta(0), candidate_window=None)
+
+    assert [s.start_time for s in out] == [
+        time(9, 0),
+        time(10, 0),
+        time(11, 0),
+    ]
+
+
+def test_ac3_busy_blocks_middle():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(17, 0))
+    busy = [BusyInterval(time(10, 0), time(11, 0))]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=3, buffer=timedelta(0), candidate_window=None)
+
+    assert [s.start_time for s in out] == [
+        time(9, 0),
+        time(9, 30),
+        time(11, 0),
+    ]
+
+
+def test_ac4_candidate_window_intersection():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(17, 0))
+    candidate = TimeWindow(time(12, 0), time(14, 0))
+    busy = []
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=3, buffer=timedelta(0), candidate_window=candidate)
+
+    assert [s.start_time for s in out] == [
+        time(12, 0),
+        time(12, 30),
+        time(13, 0),
+    ]
+
+
+def test_ac6_unsorted_busy_intervals():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [
+        BusyInterval(time(10, 0), time(10, 30)),
+        BusyInterval(time(9, 30), time(10, 0)),  # unsorted
+    ]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=1, buffer=timedelta(0), candidate_window=None)
+
+    assert [s.start_time for s in out] == [time(9, 0)]
+
+
+def test_ac7_buffer_respected():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [BusyInterval(time(10, 0), time(11, 0))]
+    duration = timedelta(minutes=30)
+    buffer = timedelta(minutes=10)
+
+    out = suggest_slots(day, working, busy, duration, n=1, buffer=buffer, candidate_window=None)
+
+    # 9:00–9:30 meeting occupies until 9:40 because of buffer
+    assert [s.start_time for s in out] == [time(9, 0)]
+
+
+def test_ac9_overlapping_busy_intervals_merged():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+    busy = [
+        BusyInterval(time(9, 0), time(10, 30)),
+        BusyInterval(time(10, 0), time(11, 0)),  # overlaps
+    ]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=1, buffer=timedelta(0), candidate_window=None)
+
+    assert [s.start_time for s in out] == [time(11, 0)]
+
+
+# ---------------- Validation & Edge Cases ----------------
+
+def test_invalid_working_hours_raises():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(10, 0), time(9, 0))  # invalid
+
+    with pytest.raises(ValueError):
+        suggest_slots(day, working, [], timedelta(minutes=30), n=1)
+
+
+def test_zero_duration_raises():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+
+    with pytest.raises(ValueError):
+        suggest_slots(day, working, [], timedelta(0), n=1)
+
+
+def test_negative_buffer_raises():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+
+    with pytest.raises(ValueError):
+        suggest_slots(day, working, [], timedelta(minutes=30), n=1, buffer=timedelta(minutes=-5))
+
+
+def test_n_zero_returns_empty():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+
+    out = suggest_slots(day, working, [], timedelta(minutes=30), n=0)
+
+    assert out == []
+
+
+def test_fallback_to_shorter_gap_when_no_full_duration():
+    """
+    No 30-min gap exists, but smaller gaps exist.
+    Should return up to N maximum shorter gaps.
+    """
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+    busy = [
+        BusyInterval(time(9, 10), time(9, 40)),
+        BusyInterval(time(9, 50), time(10, 0)),
+    ]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=2, buffer=timedelta(0), candidate_window=None)
+
+    # Only small gaps exist: 9:00–9:10 and 9:40–9:50
+    assert len(out) > 0
+    assert out[0].start_time == time(9, 0)
+
+
+def test_candidate_window_no_overlap_with_working():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(10, 0))
+    candidate = TimeWindow(time(11, 0), time(12, 0))
+
+    out = suggest_slots(day, working, [], timedelta(minutes=30), n=5, candidate_window=candidate)
+
+    assert out == []

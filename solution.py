@@ -124,121 +124,108 @@ def suggest_slots(
     ##################################################################
     # TODO: Implement as per lab handout requirements and constraints.
     ##################################################################
-    def suggest_slots(
-    day: date,
-    working_hours: TimeWindow,
-    busy_intervals: List[BusyInterval],
-    duration: timedelta,
-    n: int,
-    buffer: timedelta = timedelta(0),
-    candidate_window: Optional[TimeWindow] = None
-) -> List[Slot]:
 
-        # -------------------- Validations --------------------
 
-        if working_hours.start >= working_hours.end:
-            raise ValueError("Working hours start time must be before end time")
 
-        if duration <= timedelta(0):
-            raise ValueError("Meeting duration must be greater than zero")
 
-        if buffer < timedelta(0):
-            raise ValueError("Buffer time cannot be negative")
+    # -------------------- Validations --------------------
 
-        if n == 0:
+    if working_hours.start >= working_hours.end:
+        raise ValueError("Working hours start must be before end")
+
+    if duration <= timedelta(0):
+        raise ValueError("Meeting duration must be greater than zero")
+
+    if buffer < timedelta(0):
+        raise ValueError("Buffer time cannot be negative")
+
+    if n == 0:
+        return []
+
+    # -------------------- Effective Window --------------------
+
+    effective_start = working_hours.start
+    effective_end = working_hours.end
+
+    if candidate_window:
+        if candidate_window.start >= candidate_window.end:
+            raise ValueError("Candidate window start must be before end")
+
+        effective_start = max(effective_start, candidate_window.start)
+        effective_end = min(effective_end, candidate_window.end)
+
+        if effective_start >= effective_end:
             return []
 
-        # -------------------- Effective Window --------------------
+    effective_start_dt = datetime.combine(day, effective_start)
+    effective_end_dt = datetime.combine(day, effective_end)
 
-        effective_start = working_hours.start
-        effective_end = working_hours.end
+    # -------------------- Normalize Busy Intervals --------------------
 
-        if candidate_window:
-            if candidate_window.start >= candidate_window.end:
-                raise ValueError("Candidate window start must be before end")
+    busy_sorted = sorted(busy_intervals, key=lambda b: b.start)
 
-            effective_start = max(effective_start, candidate_window.start)
-            effective_end = min(effective_end, candidate_window.end)
+    merged = []
+    for b in busy_sorted:
+        if b.start >= b.end:
+            continue
 
-            if effective_start >= effective_end:
-                return []
+        b_start = datetime.combine(day, b.start)
+        b_end = datetime.combine(day, b.end)
 
-        # -------------------- Normalize Busy Intervals --------------------
-
-        # Sort busy intervals
-        busy_intervals_sorted = sorted(busy_intervals, key=lambda x: x.start)
-
-        # Merge overlapping intervals
-        merged_busy = []
-        for interval in busy_intervals_sorted:
-            if interval.start >= interval.end:
-                continue
-
-            if not merged_busy:
-                merged_busy.append(interval)
+        if not merged:
+            merged.append((b_start, b_end))
+        else:
+            last_start, last_end = merged[-1]
+            if b_start <= last_end:
+                merged[-1] = (last_start, max(last_end, b_end))
             else:
-                last = merged_busy[-1]
-                if interval.start <= last.end:
-                    merged_busy[-1] = BusyInterval(
-                        start=last.start,
-                        end=max(last.end, interval.end)
-                    )
-                else:
-                    merged_busy.append(interval)
+                merged.append((b_start, b_end))
 
-        # -------------------- Build Free Gaps --------------------
+    # -------------------- Build Free Gaps --------------------
 
-        free_gaps = []
+    free_gaps = []
+    cursor = effective_start_dt
 
-        current_start = effective_start
+    for b_start, b_end in merged:
+        if b_end <= effective_start_dt:
+            continue
+        if b_start >= effective_end_dt:
+            break
 
-        for busy in merged_busy:
-            if busy.end <= effective_start:
-                continue
-            if busy.start >= effective_end:
-                break
+        b_start = max(b_start, effective_start_dt)
+        b_end = min(b_end, effective_end_dt)
 
-            busy_start = max(busy.start, effective_start)
-            busy_end = min(busy.end, effective_end)
+        if b_start > cursor:
+            free_gaps.append((cursor, b_start))
 
-            if busy_start > current_start:
-                free_gaps.append((current_start, busy_start))
+        cursor = max(cursor, b_end)
 
-            current_start = max(current_start, busy_end)
+    if cursor < effective_end_dt:
+        free_gaps.append((cursor, effective_end_dt))
 
-        if current_start < effective_end:
-            free_gaps.append((current_start, effective_end))
+    # -------------------- Generate Slots --------------------
 
-        # -------------------- Generate Slots --------------------
+    slots = []
+    block = duration + buffer
 
-        slots = []
-        full_block = duration + buffer
+    for gap_start, gap_end in free_gaps:
+        slot_cursor = gap_start
 
+        while slot_cursor + block <= gap_end:
+            slots.append(Slot(start_time=slot_cursor.time()))
+            if len(slots) == n:
+                return slots
+            slot_cursor += block
+
+    # -------------------- Fallback: Shorter Gaps --------------------
+
+    if not slots:
+        shorter = []
         for gap_start, gap_end in free_gaps:
-            cursor = gap_start
+            if gap_end > gap_start:
+                shorter.append(Slot(start_time=gap_start.time()))
+                if len(shorter) == n:
+                    break
+        return shorter
 
-            # Generate full-duration slots first
-            while cursor + full_block <= gap_end:
-                slots.append(Slot(start_time=cursor))
-                if len(slots) == n:
-                    return slots
-                cursor = cursor + full_block
-
-        # -------------------- If No Full Slots Exist --------------------
-
-        if not slots:
-            # Return maximum shorter gaps (deterministic left-to-right)
-            shorter_slots = []
-
-            for gap_start, gap_end in free_gaps:
-                gap_length = datetime.combine(day, gap_end) - datetime.combine(day, gap_start)
-                if gap_length > timedelta(0):
-                    shorter_slots.append(
-                        Slot(start_time=gap_start)
-                    )
-                    if len(shorter_slots) == n:
-                        break
-
-            return shorter_slots
-
-        return slots
+    return slots
