@@ -33,6 +33,11 @@ The objective of the system is to recommend appointment time slots in the user g
 - It is assumed that the recommended slot includes buffer time
 - If there is no available slot present as long as user given meeting duration then system shall return shorter duration slots as many as fit (up to N)
 - It is assumed that the buffer applies after both busy intervals and meeting slots
+- It is assumed that the system shall generate slots within the working window, where every slot is meeting duration+buffer time long from left-to-right
+- If working_hours.start >= working_hours.end then the system shall reasi ValueError
+- If N == 0 the system shall   return []
+- If no available slot for meeting duration exisits the system shall return upto N slots with the maximum time shorter than the meeting duration 
+- If  Candidte window provied it will be intersected with working hours 
 
 ## Invariants
 
