@@ -27,6 +27,16 @@ It is assumed that the working window is not always the normal working hours fro
 A6:
 It is assumed that the system can automatically make decisions to resolve scheduling conflicts
 
+## 3. Functional Requirements - Describe the main behaviors the system
+must perform.
+FR1:
+The system shall raise a distinct error when startTime is larger than or equal to endTime
+FR2:
+The system shall raise a distinct error when duration is less than or equal to zero
+FR3:
+The system shall raise a distinct error when N is less than or equal to zero
+FR4:
+The system shall return an empty list when no bookable slot can be scheduled
 
 
 
