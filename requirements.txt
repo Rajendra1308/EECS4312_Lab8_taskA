@@ -27,8 +27,7 @@ It is assumed that the working window is not always the normal working hours fro
 A6:
 It is assumed that the system can automatically make decisions to resolve scheduling conflicts
 
-## 3. Functional Requirements - Describe the main behaviors the system
-must perform.
+## 3. Functional Requirements - Describe the main behaviors the systemmust perform.
 FR1:
 The system shall raise a distinct error when startTime is larger than or equal to endTime
 FR2:
@@ -39,4 +38,105 @@ FR4:
 The system shall return an empty list when no bookable slot can be scheduled
 
 
+## 4. System Constraints - Constraints are conditions the system must
+always respect. Each constraint should reference the persona attribute
+it originates from.
+C1: The system shall resolve scheduling conflicts automatically
+Derived from persona attribute: Jane (expects automatically handling conflicts)
+
+
+C2: The system shall not produce different outputs for identical inputs over simultaneous calls
+Derived from persona attribute: Jane (Systems behave inconsistently in similar situations.)
+
+
+
+C3: The system shall not spam the user with too many notifications, including failures/conflicts resolved/ and duplicate slots generated
+Derived from persona attribute: Jane (Having to manually resolve conflicts or check system correctness.)
+
+C4: The system must gracefully hadle errors with describing the error messages 
+Derived from persona attribute: Mo (Not understanding why the system changed or rejected an action.)
+
+C5: The system shall log the justifications for resolving conflicts/not being able to generate slots
+Derived from persona attribute: Mo (Silent failures or dropped reminders/requests.)
+
+C6: The system shall have a consistent response for any boundary scenario
+Derived from persona attribute: Mo (Inconsistent responses across repeated or boundary scenarios.)
+
+
+## 5. Acceptance Criteria - Acceptance criteria define how system
+behavior will be verified.
+AC1:
+Given working hours 17:00 - 9:00 am
+When system generates slots
+Then it shall raise a ValueError("Start time must be less than the end time")
+Linked Constraint ID(s): C4
+
+
+
+AC2:
+Given working hours 9- 10 and busy intervas [(9:10,9:50)] and duration = 60 minutes, buffer=0, N=1
+When system generates slots
+Then it shall return []
+Linked Constraint ID(s): C1, C3
+
+AC3: 
+
+Given working hours 09-17:00, duration=0 
+When system generates slots
+Then it shall raise a ValueError("Duration value must be > 0 ")
+Linked Constraint ID(s): C4
+
+AC4:
+
+Given working hours 09-13:00 busy intervals [(7:00,8:00),(14:00,16:00)], meeting duration= 60 minutes, buffer=0, N=3
+When system generates slots 
+Then it shall return [(9:00,10:00),(10:00,11:00),(11:00,12:00)]
+Linked Constraint ID(s): C2
+
+
+
+AC5:
+Given working hours 0::9-12:00  no busy intervals , meeting duration= 30 minutes, buffer=0, N=10
+When system generates slots 
+Then it shall return slots each of duration 30 minutes between 9-12, where the total number of slots <= N
+Linked Constraint ID(s): C5, C6
+
+
+
+
+
+AC6:
+
+Given working hours 09:00-12:00   busy intervals [(10:30, 09:30)] , meeting duration= 30 minutes, buffer=0, N=1
+When system generates slots 
+Then it shall raise ValueError("Busy interval Start time must be less than busy interval end time")
+Linked Constraint ID(s): C4
+
+AC7:
+Given working hours 09.:00 - 17:00 am and N=0
+When system generates slots
+Then it shall raise a ValueError("Invalud Value of N, N cannot be <=0")
+Linked Constraint ID(s): C4
+
+
+## 6. Edge Cases - Describe unusual or boundary situations the system
+must handle.
+EC1:
+If no free time in the working window, the system shall return an empty list. 
+EC2: 
+If the start_time > end_time for the working window, the system shall raise a ValueError with a relevant message 
+
+EC3:
+If the start_time > end_timee in the  busy interval, the system shall raise a ValueError with a relevant message 
+
+## 7. Traceability - Link functional requirements to constraints and acceptance criteria. FR → C → AC mapping
+FR1 -> C4 -> AC1
+FR2 -> C4 -> AC3
+FR3 -> C4 -> AC7
+FR4 -> C1 -> AC2
+FR1 -> C5 -> AC6
+FR3 -> C5 -> AC7
+
+
+Revision Notes
 
