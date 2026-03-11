@@ -1,1 +1,32 @@
 Note: the below functioneal requirements are from the questionnairre responses
+## 1. Problem Understanding - Describe the problem your system solves.
+System purpose:The objectivbe of the system is to recommend appointment time slots in the user given window of working hours where a potential meeting can be scheduled, ensuring they do not clash with the user-given busy hours/intervals.The system must behave deterministically and also resolve scheduling conflicts automatically without the user intervening. It should throw explicit errors instead of handling edge cases silently. Lastly, it should support the users who trust the system decisions and the ones  who rely on explainable outputs.
+
+
+Inputs to the system:
+
+ start time: str -- format = ("00:00" - "23:59")
+ end time: str -- format =  ("00:00" - "23:59")
+ busy interval: list[tuple(str)] --- format = [(start_time_i, end_time_i), (start_time_j, end_time_j] 
+buffer time: int (any integer which will correspond to minutes between 2 meetings)
+ meeting duration: int (same format as above - it will translate to minutes per meeting)
+ candidate time window: list[tuple(str)]  -- format =  [(candidate_start_time, candidate_end_time)] this is an optional parameter
+number of slots (N): int 
+
+## 2. Assumptions - List assumptions about the environment, users, or inputs.
+A1:
+It is assumed that the times are for a single day and not more than that
+A2:
+It is assumed that the times provided are in 24 hour format containing only hours and minutes
+A3:
+It is assumed that the buffer time is consistent across all the meetings/ same buffer time applies after every meeting
+A4:
+It is assumed that the meeting duration is same for all meetings
+A5:
+It is assumed that the working window is not always the normal working hours from 09:00-17:00
+A6:
+It is assumed that the system can automatically make decisions to resolve scheduling conflicts
+
+
+
+
