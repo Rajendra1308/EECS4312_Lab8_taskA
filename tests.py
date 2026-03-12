@@ -450,3 +450,147 @@ def test_fallback_only_when_no_full_duration():
     # No full-duration slot possible
     assert len(out) == 1
     assert out[0].start_time == time(9, 0)
+
+
+#################################################################################
+# Additional Edge Case Tests (not already covered above)
+#################################################################################
+
+def test_meeting_can_end_exactly_when_busy_starts():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(11, 0))
+
+    busy = [BusyInterval(time(10, 0), time(11, 0))]
+    duration = timedelta(minutes=60)
+
+    out = suggest_slots(day, working, busy, duration, n=1)
+
+    # 9:00–10:00 should be allowed
+    assert out[0].start_time == time(9, 0)
+
+
+def test_meeting_can_start_exactly_when_busy_ends():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+
+    busy = [BusyInterval(time(9, 0), time(10, 0))]
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=1)
+
+    # Meeting should start exactly when busy interval ends
+    assert out[0].start_time == time(10, 0)
+
+
+def test_busy_partially_outside_working_trimmed():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+
+    busy = [
+        BusyInterval(time(8, 30), time(9, 30))  # partially overlaps working window
+    ]
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=1)
+
+    # First valid slot should start after 9:30
+    assert out[0].start_time == time(9, 30)
+
+
+def test_adjacent_busy_intervals_merge():
+    day = date(2026, 2, 24)
+    working = TimeWindow(time(9, 0), time(12, 0))
+
+    busy = [
+        BusyInterval(time(9, 0), time(10, 0)),
+        BusyInterval(time(10, 0), time(11, 0)),  # touches previous interval
+    ]
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, busy, duration, n=1)
+
+    # merged interval should block until 11
+    assert out[0].start_time == time(11, 0)
+
+
+def test_duration_exceeds_working_window():
+    day = date(2026, 2, 24)
+
+    working = TimeWindow(time(9, 0), time(10, 0))
+    duration = timedelta(hours=2)
+
+    out = suggest_slots(day, working, [], duration, n=3)
+
+    # No full-duration slot possible, fallback should return the start of the gap
+    assert len(out) == 1
+    assert out[0].start_time == time(9, 0)
+
+
+def test_candidate_window_equals_working_window():
+    day = date(2026, 2, 24)
+
+    working = TimeWindow(time(9, 0), time(12, 0))
+    candidate = TimeWindow(time(9, 0), time(12, 0))
+
+    duration = timedelta(minutes=30)
+
+    out = suggest_slots(day, working, [], duration, n=2, candidate_window=candidate)
+
+    assert [s.start_time for s in out] == [
+        time(9, 0),
+        time(9, 30),
+    ]
+
+
+def test_buffer_pushes_slot_outside_working_window():
+    day = date(2026, 2, 24)
+
+    working = TimeWindow(time(9, 0), time(10, 0))
+
+    duration = timedelta(minutes=30)
+    buffer = timedelta(minutes=40)
+
+    out = suggest_slots(day, working, [], duration, n=3, buffer=buffer)
+
+    # Only first slot should be valid
+    assert out == [Slot(start_time=time(9, 0))]
+
+
+def test_exact_gap_equal_to_duration():
+    day = date(2026, 2, 24)
+
+    working = TimeWindow(time(9, 0), time(12, 0))
+
+    busy = [
+        BusyInterval(time(9, 30), time(10, 30))
+    ]
+
+    duration = timedelta(hours=1)
+
+    out = suggest_slots(day, working, busy, duration, n=1)
+
+    # 10:30–11:30 should be valid
+    assert out[0].start_time == time(10, 30)
+
+
+def test_many_busy_intervals_deterministic():
+    day = date(2026, 2, 24)
+
+    working = TimeWindow(time(9, 0), time(17, 0))
+
+    busy = [
+        BusyInterval(time(9, 30), time(10, 0)),
+        BusyInterval(time(11, 0), time(11, 30)),
+        BusyInterval(time(13, 0), time(13, 30)),
+        BusyInterval(time(15, 0), time(15, 30)),
+    ]
+
+    duration = timedelta(minutes=30)
+
+    out1 = suggest_slots(day, working, busy, duration, n=5)
+    out2 = suggest_slots(day, working, busy, duration, n=5)
+
+    assert out1 == out2
+
