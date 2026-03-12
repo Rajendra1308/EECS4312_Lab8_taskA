@@ -206,34 +206,31 @@ def suggest_slots(
 
     # ==================== GENERATE SLOTS ====================
 
+
     slots = []
-    block = duration  # meeting length only (buffer already applied)
+
+    meeting_length = duration
+    step = duration + buffer  # sequential scheduling with buffer between meetings
 
     for gap_start, gap_end in free_gaps:
         slot_cursor = gap_start
 
-        while slot_cursor + block <= gap_end:
-            new_slot_end = slot_cursor + block
+        while slot_cursor + meeting_length <= gap_end:
 
-            # Final invariant checks
-            if not (effective_start_dt <= slot_cursor < new_slot_end <= effective_end_dt):
-                slot_cursor += block
+            new_slot_end = slot_cursor + meeting_length
+
+            # Ensure slot fits within effective window
+            if not (effective_start_dt <= slot_cursor and new_slot_end <= effective_end_dt):
+                slot_cursor += step
                 continue
-
-            # Ensure no overlap with previous slot
-            if slots:
-                last_slot_dt = datetime.combine(day, slots[-1].start_time)
-                last_slot_end = last_slot_dt + block
-                if slot_cursor < last_slot_end:
-                    slot_cursor = last_slot_end
-                    continue
 
             slots.append(Slot(start_time=slot_cursor.time()))
 
             if len(slots) == n:
                 return slots
 
-            slot_cursor += block
+            # Move cursor by meeting duration + buffer
+            slot_cursor += step
 
     # ==================== FALLBACK (SHORTER GAPS) ====================
 
