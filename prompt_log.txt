@@ -1,0 +1,474 @@
+Prompt #1:{
+Please go through the requirements.txt and do not generate code yet. Ask for any missing constraints, ambiguous requirements, or unhandled cases if you discover that they are not already present. 
+}
+
+Response #1: {
+I reviewed the **requirements.txt** you uploaded. The overall idea is clear (generate meeting slots within working hours while avoiding busy intervals), but there are several **ambiguous behaviors, missing constraints, and edge cases** that should be clarified **before implementation**.
+
+Below are the questions and gaps I found.
+
+---
+
+# 1. Time Window Semantics
+
+### 1.1 Are end times inclusive or exclusive?
+
+Example:
+
+* Working hours: `09:00–10:00`
+* Duration: `60`
+
+Should `(09:00,10:00)` be valid?
+
+Or must the meeting **finish strictly before** `end_time`?
+
+This affects slot generation logic.
+
+---
+
+### 1.2 Can a meeting end exactly when a busy interval starts?
+
+Example:
+
+* Slot: `(09:00,10:00)`
+* Busy: `(10:00,11:00)`
+
+Is this valid?
+
+---
+
+### 1.3 Can a meeting start exactly when a busy interval ends?
+
+Example:
+
+* Busy `(09:00,10:00)`
+* Slot `(10:00,11:00)`
+
+Allowed?
+
+---
+
+# 2. Busy Interval Handling
+
+### 2.1 Are overlapping busy intervals allowed in input?
+
+Example:
+
+```
+[(10:00,11:00), (10:30,12:00)]
+```
+
+If yes:
+
+* Should the system **merge them automatically**?
+* Or **raise an error**?
+
+---
+
+### 2.2 What if busy intervals fall outside working hours?
+
+Example:
+
+```
+working window: 09:00–17:00
+busy: (07:00,08:00)
+```
+
+AC4 suggests **ignore them**, but this should be explicitly stated.
+
+---
+
+### 2.3 What if a busy interval partially overlaps working hours?
+
+Example:
+
+```
+busy: (08:30,09:30)
+```
+
+Should it be clipped to:
+
+```
+(09:00,09:30)
+```
+
+Or treated as invalid?
+
+---
+
+### 2.4 Should busy intervals be sorted automatically?
+
+Input example:
+
+```
+[(14:00,15:00),(09:30,10:00)]
+```
+
+---
+
+# 3. Candidate Time Window (Optional Input)
+
+You mentioned:
+
+```
+candidate time window: list[(start,end)]
+```
+
+But **no requirements describe how it affects scheduling**.
+
+Questions:
+
+### 3.1 Are candidate windows:
+
+* **hard constraints** (slots must fall within them), or
+* **preferences**?
+
+---
+
+### 3.2 If candidate windows exist, should slots be generated:
+
+Option A
+
+```
+within working hours ∩ candidate windows
+```
+
+Option B
+
+```
+candidate windows only
+```
+
+---
+
+### 3.3 Can candidate windows overlap?
+
+---
+
+### 3.4 Can candidate windows fall outside working hours?
+
+---
+
+# 4. Buffer Time Logic
+
+The requirement says:
+
+```
+buffer time between meetings
+```
+
+But it is unclear whether the buffer applies to:
+
+### 4.1 Busy intervals
+
+Example:
+
+```
+busy: (10:00,11:00)
+buffer: 10
+```
+
+Does this block:
+
+```
+(09:50,11:10)?
+```
+
+---
+
+### 4.2 Generated slots
+
+Example:
+
+```
+duration=30
+buffer=10
+```
+
+Are slots:
+
+```
+09:00-09:30
+09:40-10:10
+09:30-10:00
+```
+
+Which one?
+
+---
+
+# 5. Slot Selection Strategy
+
+If many slots exist but **N is limited**, how are slots chosen?
+
+Example:
+
+```
+working: 09:00–17:00
+duration: 30
+N=3
+```
+
+Should the system return:
+
+Option A – earliest first
+
+```
+[(09:00,09:30),(09:30,10:00),(10:00,10:30)]
+```
+
+Option B – evenly distributed?
+
+Option C – random?
+
+For **deterministic behavior (C2)**, earliest-first seems likely, but it should be explicit.
+
+---
+
+# 6. Maximum Slot Generation
+
+AC5 states:
+
+```
+total slots <= N
+```
+
+Clarify:
+
+### Should the system:
+
+* generate **all possible slots** then return the first `N`
+  OR
+* **stop generating once N slots are found**?
+
+---
+
+# 7. Time Format Validation
+
+You assume times like `"09:00"`.
+
+What should happen if input contains:
+
+```
+"9:00"
+"25:00"
+"10:60"
+"abc"
+```
+
+Options:
+
+* strict validation
+* auto-normalization
+
+---
+
+# 8. Input Type Validation
+
+Should errors be raised for:
+
+```
+buffer = -5
+duration = -10
+busy = None
+busy = ["10:00"]
+busy = [(10:00,11:00)]  # not strings
+```
+
+---
+
+# 9. Busy Interval Equal Times
+
+What should happen for:
+
+```
+busy = [(10:00,10:00)]
+```
+
+Possible rules:
+
+* invalid interval → error
+* ignore it
+
+---
+
+# 10. Meeting Duration vs Working Window
+
+Example:
+
+```
+working: 09:00–10:00
+duration: 120
+```
+
+Return:
+
+```
+[]
+```
+
+or
+
+```
+ValueError
+```
+
+---
+
+# 11. Buffer vs Working Window Edge Case
+
+Example:
+
+```
+working: 09:00–10:00
+duration: 30
+buffer: 20
+```
+
+Do we allow:
+
+```
+09:00-09:30
+09:50-10:20  ❌ outside window
+```
+
+Should buffer **not push slots outside working window**?
+
+---
+
+# 12. Output Format
+
+Currently implied:
+
+```
+[(start,end)]
+```
+
+Questions:
+
+### 12.1 Should output be:
+
+```
+list[tuple[str,str]]
+```
+
+or
+
+```
+list[tuple[datetime,datetime]]
+```
+
+---
+
+### 12.2 Must slots be sorted?
+
+---
+
+# 13. Error Type Standardization
+
+Requirements mention:
+
+```
+ValueError
+```
+
+But do we want **distinct messages only**, or **distinct exception types**?
+
+Example:
+
+```
+InvalidWorkingWindowError
+InvalidBusyIntervalError
+```
+
+---
+
+# 14. Logging Requirement (C5)
+
+Constraint says:
+
+```
+system shall log justifications
+```
+
+Clarify:
+
+* Should logging be **mandatory**?
+* Should logs include:
+
+  * removed slots
+  * merged busy intervals
+  * reasons for no slots?
+
+---
+
+# 15. Determinism Requirement
+
+C2 says:
+
+```
+identical inputs → identical outputs
+```
+
+Clarify:
+
+* Should we **sort busy intervals automatically** to guarantee determinism?
+
+---
+
+# 16. Multiple Candidate Windows + Busy Intervals
+
+Example scenario not covered:
+
+```
+working: 09–17
+candidate: [(09–11),(14–16)]
+busy: [(10–10:30),(15–15:30)]
+```
+
+Expected behavior?
+
+---
+
+# 17. Minimum Gap Between Generated Slots
+
+With buffer:
+
+```
+duration = 30
+buffer = 10
+```
+
+Should slots be:
+
+```
+09:00-09:30
+09:40-10:10
+```
+
+or
+
+```
+09:00-09:30
+09:30-10:00
+```
+
+---
+
+# Summary of Major Missing Definitions
+
+The **most critical missing rules** are:
+
+1️⃣ Busy interval normalization
+2️⃣ Buffer semantics
+3️⃣ Candidate window usage
+4️⃣ Slot selection strategy (earliest vs others)
+5️⃣ Boundary rules (touching intervals)
+6️⃣ Input validation scope
+
+---
+
+If you'd like, I can also help you **turn this into a clarified specification** so the implementation becomes straightforward and your **tests achieve full coverage**.
+
+
+}

@@ -140,3 +140,182 @@ FR3 -> C5 -> AC7
 
 Revision Notes
 
+Note: LLM has mostly identified missing functional requirements and thus the reason for some of the below revision notes are same, for other ambiguities the relevant reasons are sstated
+
+1.
+• the requirement that was changed or added
+    The end_time should be inclusive. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+2.
+
+• the requirement that was changed or added
+    Yes, the meeting can end exactly when a busy interval starts. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback.
+
+3.
+• the requirement that was changed or added
+    Yes, the meeting can start exactly when a busy interval starts. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+4.
+
+
+• the requirement that was changed or added
+    Overlapping busy intervals are allowed, and they should be merged automatically. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+5.
+
+• the requirement that was changed or added
+   The system should ignore busy intervals outside a working window. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+6.
+
+• the requirement that was changed or added
+     The system should ignore busy intervals outside a working window even if the are partially outside. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+
+7.
+
+• the requirement that was changed or added
+     The system shall sort busy intervals automatically. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+8.
+
+• the requirement that was changed or added
+     The system shall scheduled slots only in candidate time window if they are provided. 
+• the reason for the revision
+It was not specified in the Functional Requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+9.
+
+• the requirement that was changed or added
+     It is assumed that the candidate windows dont overlap and fall outside working hours. 
+• the reason for the revision
+It was not stated under constraints/assumptions
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+10.
+
+• the requirement that was changed or added
+     It is assumed that the buffer time applies between 2 meetings 
+• the reason for the revision
+It was not stated under constraints/assumptions
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+11.
+
+• the requirement that was changed or added
+     The system shall schedule sequentially N slots of size duration (+buffer time if provided), with earliest first approach
+• the reason for the revision
+The slot scheduleing strategy was not included inf functional requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+
+12.
+
+
+• the requirement that was changed or added
+     The system shall schedule only upto N slotes in the working window
+• the reason for the revision
+The slot scheduleing strategy was not included inf functional requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+13.
+
+
+• the requirement that was changed or added
+     The system shall adhere to the input format for each parameter
+• the reason for the revision
+It was not mentioned in assumptions
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+
+14.
+
+
+• the requirement that was changed or added
+
+     The system shall return empty list if duration exceed the working window limit
+• the reason for the revision
+It was not mentioned in functional requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+
+15.
+
+
+• the requirement that was changed or added
+     The system shall  schedule slots with in the working window including the buffer time
+• the reason for the revision
+The buffer time addition exceeding the working window for slot scheduleing was not clarfied in the assumptions
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+16.
+
+
+• the requirement that was changed or added
+     The system must return sorted list of slotes in the format [(start_time,end_time)]
+• the reason for the revision
+The output format was not explicitely specified under functional requirements
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+
+17.
+
+
+• the requirement that was changed or added
+     The system shall return the error message as strings
+• the reason for the revision
+The output format for error messagees was not explicitely specified under functional requirements
+
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+
+18.
+
+• the requirement that was changed or added
+     It is assumed that the system shall log justifications for removed slots,merged busy intervals, reasons for no slots
+• the reason for the revision
+It was not specified as an assumption
+
+• whether the change was triggered by LLM feedback
+Yes it was triggered by LLM feedback
+
+
